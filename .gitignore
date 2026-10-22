@@ -1,0 +1,7 @@
+venv/
+.env
+__pycache__/
+*.pyc
+*.docx
+.DS_Store
+generate_mocks.py
