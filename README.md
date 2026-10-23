@@ -12,8 +12,8 @@ Built for the **NVIDIA x Nebius Hackathon 2026 — Best Apps & Agents Track**.
 
 ## Try ColdChain Guard
 
-- **Live app:** [Open the Streamlit demo](ADD_YOUR_STREAMLIT_DEMO_URL)
-- **Video walkthrough:** [Watch the YouTube demo](ADD_YOUR_YOUTUBE_VIDEO_URL)
+- **Live app:** [Open the Streamlit demo](https://coldchain-guard-69a75eynyy29vt9fyzsoss.streamlit.app/)
+- **Video walkthrough:** [Watch the YouTube demo](https://youtu.be/zw4lg_pjb30)
 - **Source code:** [Explore the GitHub repository](https://github.com/kokos-lab17/coldchain-guard)
 
 
@@ -215,7 +215,7 @@ Open the local URL printed by Streamlit, usually `http://localhost:8501`.
 
 ColdChain Guard brought several parts of application development together in one project: processing real-looking sensor data, extracting and sanitizing document text, integrating model APIs, handling structured responses, and turning the results into a usable interface and downloadable document.
 
-It was also a chance to think carefully about where deterministic code is a better fit than generative AI, and where a language model can help interpret context that is harder to express as simple rules. That combination is what makes the project interesting to me—and a foundation I can continue building on.
+It was also a chance to think carefully about where deterministic code is a better fit than generative AI, and where a language model can help interpret context that is harder to express as simple rules. That combination is what makes the project interesting to me and a foundation I can continue building on.
 
 ## License
 
