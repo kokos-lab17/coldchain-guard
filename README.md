@@ -35,9 +35,9 @@ Every year, over **$35 billion** worth of perishable pharmaceuticals and bioprod
 ## Demo & Screenshots
 
 ### 1. Interactive Forensic Dashboard & Telemetry Audit
-![Starting Dashboard](images/streamlit_dashboard)
-
-![Audit Dashboard](images/plotly_chart)
+![Starting Dashboard](images/streamlit_dashboard.png)
+---
+![Audit Dashboard](images/plotly_chart.png)
 *Interactive Plotly telemetry curve mapping ambient container temperatures against contractual safe limits.*
 
 ### 2. Local PII Redaction & In-Memory Privacy Scrubbing
