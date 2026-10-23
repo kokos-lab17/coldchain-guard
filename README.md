@@ -22,7 +22,7 @@ Every year, over **$35 billion** worth of perishable pharmaceuticals and bioprod
 
 ---
 
-## 🏆 Key Architectural Pillars (The MVPs)
+## Key Architectural Pillars (The MVPs)
 
 | Feature | The Problem | How ColdChain Guard Solves It |
 |---|---|---|
@@ -35,15 +35,19 @@ Every year, over **$35 billion** worth of perishable pharmaceuticals and bioprod
 ## Demo & Screenshots
 
 ### 1. Interactive Forensic Dashboard & Telemetry Audit
-![Audit Dashboard](docs/screenshots/dashboard_overview.png)
-*Interactive Plotly telemetry curve mapping ambient container temperatures against contractual safe limits (with fault markers).*
+![Starting Dashboard](images/streamlit_dashboard)
+
+![Audit Dashboard](images/plotly_chart)
+*Interactive Plotly telemetry curve mapping ambient container temperatures against contractual safe limits.*
 
 ### 2. Local PII Redaction & In-Memory Privacy Scrubbing
-![Privacy Scrubbing](docs/screenshots/pii_redaction.png)
+![Privacy Scrubbing](images/Redactions.png)
 *Auditable diff table showing client entity masking executed entirely client-side prior to model inference.*
 
 ### 3. Formal Adjudication & Notice of Claim Generation
-![Claim Generation](docs/screenshots/claim_verdict.png)
+![AI Verdict](images/AI_Verdict.png)
+![Claim Generation](images/claim_letter.png)
+
 *Deterministic verdict with cited breach clauses, financial indemnification demands, and downloadable formatted `.docx` notice.*
 
 
