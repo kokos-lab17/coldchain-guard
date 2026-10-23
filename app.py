@@ -8,7 +8,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- CACHED AI ADJUDICATION ---
+
 @st.cache_data(show_spinner=False)
 def cached_audit_liability(telemetry_summary, sanitized_contract_text, api_key):
     return audit_liability(
@@ -43,7 +43,6 @@ with col_upload:
 
     audit_button = st.button("Run Audit", type="primary", use_container_width=True)
 
-# Process logic and persist findings to session_state
 if audit_button:
     if not csv_file or not pdf_file:
         st.warning("Please provide both the sensor CSV and the contract PDF to run the audit.")
@@ -59,7 +58,7 @@ if audit_button:
                     api_key=api_key_input if api_key_input else None
                 )
 
-                # Save everything into session_state so reruns preserve the screen
+               
                 st.session_state["audit_results"] = {
                     "chart": chart,
                     "telemetry_data": telemetry_data,
@@ -74,7 +73,7 @@ if audit_button:
 with col_results:
     st.markdown("### 2. Audit Findings")
 
-    # Render results whenever they exist in session_state
+    
     if "audit_results" in st.session_state:
         res = st.session_state["audit_results"]
         chart = res["chart"]

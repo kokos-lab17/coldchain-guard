@@ -11,30 +11,30 @@ from docx.shared import Inches, Pt, RGBColor
 from docx.enum.table import WD_TABLE_ALIGNMENT
 
 load_dotenv()
-
 def get_nebius_client(api_key=None, base_url=None):
-   
     resolved_key = api_key or os.getenv("NEBIUS_API_KEY") or os.getenv("NVIDIA_API_KEY")
     if not resolved_key:
         raise ValueError("API Key not found. Please provide a key in the UI sidebar or .env file.")
 
-    
     if base_url:
         target_url = base_url
-    elif os.getenv("NEBIUS_BASE_URL"):
-        target_url = os.getenv("NEBIUS_BASE_URL")
+        target_model = os.getenv("NEBIUS_MODEL", "nvidia/Nemotron-3_5-Lightning")
     elif resolved_key.startswith("nvapi-"):
-        
+        # Local developer key -> route to NVIDIA NIM with NVIDIA model slug
         target_url = "https://integrate.api.nvidia.com/v1"
+        target_model = "nvidia/nemotron-3.5-lightning-30b-a3b"
     else:
+        # Evaluator / Judge key -> route to Nebius Token Factory with Nebius model slug
+        target_url = os.getenv("NEBIUS_BASE_URL", "https://api.tokenfactory.nebius.com/v1/")
+        target_model = os.getenv("NEBIUS_MODEL", "nvidia/Nemotron-3_5-Lightning")
 
-        target_url = "https://api.tokenfactory.nebius.com/v1/"
-
-    return OpenAI(base_url=target_url, api_key=resolved_key)
+    client = OpenAI(base_url=target_url, api_key=resolved_key)
+    client.target_model = target_model
+    return client
 
 def audit_liability(telemetry_summary, sanitized_contract_text, api_key=None, base_url=None):
-    target_model = "nvidia/nemotron-3.5-lightning-30b-a3b"
-
+    client = get_nebius_client(api_key=api_key, base_url=base_url)
+    target_model = getattr(client, "target_model", "nvidia/nemotron-3.5-lightning-30b-a3b")
     system_instruction = """
     You are a senior forensic maritime and cargo insurance adjudicator.
     Your job is to objectively evaluate potential contract breaches by comparing empirical sensor telemetry against contractual terms.
@@ -46,7 +46,6 @@ def audit_liability(telemetry_summary, sanitized_contract_text, api_key=None, ba
     4. If the continuous breach duration from the sensor facts does not exceed the threshold defined in the contract, you MUST declare carrier_liable as false.
     5. You must conclude with a valid JSON object matching the requested schema. No conversational filler or text after the JSON.
     """
-
     user_prompt = f"""
     AUDIT INPUT DATA:
 
