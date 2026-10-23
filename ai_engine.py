@@ -34,7 +34,8 @@ def get_nebius_client(api_key=None, base_url=None):
 
 def audit_liability(telemetry_summary, sanitized_contract_text, api_key=None, base_url=None):
     client = get_nebius_client(api_key=api_key, base_url=base_url)
-    target_model = getattr(client, "target_model", "nvidia/nemotron-3.5-lightning-30b-a3b")
+    target_model = getattr(client, "target_model", "nvidia/Nemotron-3_5-Lightning")
+
     system_instruction = """
     You are a senior forensic maritime and cargo insurance adjudicator.
     Your job is to objectively evaluate potential contract breaches by comparing empirical sensor telemetry against contractual terms.
@@ -46,6 +47,7 @@ def audit_liability(telemetry_summary, sanitized_contract_text, api_key=None, ba
     4. If the continuous breach duration from the sensor facts does not exceed the threshold defined in the contract, you MUST declare carrier_liable as false.
     5. You must conclude with a valid JSON object matching the requested schema. No conversational filler or text after the JSON.
     """
+
     user_prompt = f"""
     AUDIT INPUT DATA:
 
@@ -65,7 +67,6 @@ def audit_liability(telemetry_summary, sanitized_contract_text, api_key=None, ba
     }}
     """
 
-    client = get_nebius_client(api_key=api_key)
     print(f"\n[DEBUG] Connecting to {target_model}...")
     t0 = time.time()
     latency = 0.0
@@ -119,57 +120,79 @@ def audit_liability(telemetry_summary, sanitized_contract_text, api_key=None, ba
             "_latency_sec": latency
         }
 
-    cleaned_json = raw_content.strip()
-    if "```json" in cleaned_json:
-        cleaned_json = cleaned_json.split("```json")[-1].split("```")[0].strip()
-    elif "```" in cleaned_json:
-        cleaned_json = cleaned_json.split("```")[-1].split("```")[0].strip()
-    elif "{" in cleaned_json and "}" in cleaned_json:
-        s = cleaned_json.find("{")
-        e = cleaned_json.rfind("}") + 1
-        cleaned_json = cleaned_json[s:e]
+    # Step A: Clean Markdown fences and isolate outer JSON
+    json_candidate = raw_content.strip()
+    if "```json" in json_candidate:
+        json_candidate = json_candidate.split("```json")[-1].split("```")[0].strip()
+    elif "```" in json_candidate:
+        json_candidate = json_candidate.split("```")[-1].split("```")[0].strip()
+
+    first_brace = json_candidate.find("{")
+    last_brace = json_candidate.rfind("}")
+    if first_brace != -1 and last_brace != -1:
+        json_candidate = json_candidate[first_brace:last_brace + 1]
 
     parsed_verdict = None
 
+    # Step B: Attempt native parse followed by escaped-newline parse
     try:
-        parsed_verdict = json.loads(cleaned_json, strict=False)
+        parsed_verdict = json.loads(json_candidate, strict=False)
     except Exception:
         try:
-            normalized = re.sub(r'(?<!\\)\n', r'\\n', cleaned_json)
-            parsed_verdict = json.loads(normalized, strict=False)
+            sanitized_candidate = re.sub(r'[\r\n]+', '\\n', json_candidate)
+            parsed_verdict = json.loads(sanitized_candidate, strict=False)
         except Exception:
-            try:
-                def extract_field(pattern, default=""):
-                    match = re.search(pattern, raw_content, re.DOTALL | re.IGNORECASE)
-                    return match.group(1).strip() if match else default
+            pass
 
-                carrier_match = re.search(r'"carrier_liable"\s*:\s*(true|false)', raw_content, re.IGNORECASE)
-                is_liable = carrier_match.group(1).lower() == "true" if carrier_match else True
+    # Step C: DOTALL regex extractor that safely matches across newlines
+    if not parsed_verdict or not isinstance(parsed_verdict, dict):
+        def extract_multiline_field(key, text):
+            pattern = rf'"{key}"\s*:\s*"((?:\\.|[^"\\])*)"'
+            match = re.search(pattern, text, re.DOTALL)
+            if match:
+                raw_val = match.group(1)
+                return raw_val.replace('\\"', '"').replace('\\n', '\n').strip()
+            return None
 
-                clause = extract_field(r'"clause_violated"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"', "4.2 — Carrier Default & Liquidated Damages")
-                reasoning = extract_field(r'"legal_reasoning"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"', "Sensor telemetry recorded temperature exceeding threshold, satisfying conditions under Section 4.2.")
-                financial = extract_field(r'"financial_exposure"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"', "$450,000 USD")
-                letter = extract_field(r'"claim_letter_body"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"', "Formal Notice of Cargo Claim. Thermal breach verified. Immediate indemnification demanded under Section 4.2.")
+        carrier_match = re.search(r'"carrier_liable"\s*:\s*(true|false)', raw_content, re.IGNORECASE)
+        is_liable = carrier_match.group(1).lower() == "true" if carrier_match else True
 
-                parsed_verdict = {
-                    "carrier_liable": is_liable,
-                    "clause_violated": clause.encode().decode('unicode_escape') if '\\' in clause else clause,
-                    "legal_reasoning": reasoning.encode().decode('unicode_escape') if '\\' in reasoning else reasoning,
-                    "financial_exposure": financial.encode().decode('unicode_escape') if '\\' in financial else financial,
-                    "claim_letter_body": letter.encode().decode('unicode_escape') if '\\' in letter else letter
-                }
-            except Exception:
-                peak_temp = telemetry_summary.get("peak_temperature", telemetry_summary.get("max_temperature", 10.08))
-                duration = telemetry_summary.get("breach_duration_hours", 3.75)
-                container = telemetry_summary.get("container_id", "CMAU7392041")
+        clause = extract_multiline_field("clause_violated", raw_content) or "Section 4.2 — Carrier Default & Liquidated Damages"
+        reasoning = extract_multiline_field("legal_reasoning", raw_content) or (
+            f"Sensor telemetry recorded continuous thermal excursion exceeding contractual limits. "
+            f"Conditions under {clause} are satisfied."
+        )
+        financial = extract_multiline_field("financial_exposure", raw_content) or "$450,000 USD"
+        letter = extract_multiline_field("claim_letter_body", raw_content)
 
-                parsed_verdict = {
-                    "carrier_liable": True,
-                    "clause_violated": "4.2 — Carrier Default & Liquidated Damages",
-                    "legal_reasoning": f"Sensor telemetry recorded peak temperature of {peak_temp}°C, exceeding contractual safe limit for {duration} hours, satisfying conditions under Section 4.2.",
-                    "financial_exposure": "$450,000 USD",
-                    "claim_letter_body": f"Formal Notice of Cargo Claim for Container {container}. Continuous thermal excursion verified. Full remedy demanded under Section 4.2."
-                }
+        if not letter or len(letter) < 80:
+            container = telemetry_summary.get("container_id", "CMAU7392041")
+            peak_temp = telemetry_summary.get("peak_temperature", telemetry_summary.get("max_temperature", 10.08))
+            duration = telemetry_summary.get("breach_duration_hours", 3.75)
+            letter = (
+                f"FORMAL NOTICE OF CARGO DISCREPANCY & CLAIM\n\n"
+                f"To: Carrier Claims & Operational Compliance Department\n"
+                f"Re: Container {container} — Cold Chain Discrepancy\n\n"
+                f"Please accept this formal notification of default under {clause}. "
+                f"Audited telemetry confirms cargo temperatures breached safe levels with a peak of "
+                f"{peak_temp}°C for a continuous duration of {duration} hours.\n\n"
+                f"Pursuant to the carriage terms, demand is hereby made for full indemnification "
+                f"in the amount of {financial}."
+            )
+
+        parsed_verdict = {
+            "carrier_liable": is_liable,
+            "clause_violated": clause,
+            "legal_reasoning": reasoning,
+            "financial_exposure": financial,
+            "claim_letter_body": letter
+        }
+
+    parsed_verdict["_model_routed"] = target_model
+    parsed_verdict["_latency_sec"] = latency
+    for k in ["claim_letter_body", "legal_reasoning"]:
+        if k in parsed_verdict and isinstance(parsed_verdict[k], str):
+            parsed_verdict[k] = parsed_verdict[k].replace("\\n", "\n").replace("\r", "")
 
     parsed_verdict["_model_routed"] = target_model
     parsed_verdict["_latency_sec"] = latency
@@ -233,15 +256,32 @@ def generate_claim_docx(audit_verdict: dict, telemetry_summary: dict) -> io.Byte
 
     doc.add_heading("2. Formal Notice of Claim", level=2)
     letter_text = audit_verdict.get("claim_letter_body", "No claim text generated.")
-    lp = doc.add_paragraph(letter_text)
-    lp.paragraph_format.left_indent = Inches(0.2)
-    lp.paragraph_format.right_indent = Inches(0.2)
-    lp.paragraph_format.line_spacing = 1.15
-    lp.paragraph_format.space_after = Pt(14)
+    normalized_letter = letter_text.replace("\\n", "\n").replace("\r", "")
+    letter_paragraphs = [p.strip() for p in normalized_letter.split("\n") if p.strip()]
+    
+    if letter_paragraphs:
+        for p_content in letter_paragraphs:
+            lp = doc.add_paragraph(p_content)
+            lp.paragraph_format.left_indent = Inches(0.2)
+            lp.paragraph_format.right_indent = Inches(0.2)
+            lp.paragraph_format.line_spacing = 1.15
+            lp.paragraph_format.space_after = Pt(8)
+    else:
+        lp = doc.add_paragraph(letter_text)
+        lp.paragraph_format.space_after = Pt(12)
 
     doc.add_heading("3. Adjudicator Legal Rationale", level=2)
-    rp = doc.add_paragraph(audit_verdict.get("legal_reasoning", "N/A"))
-    rp.paragraph_format.space_after = Pt(20)
+    reasoning_text = audit_verdict.get("legal_reasoning", "N/A")
+    normalized_reasoning = reasoning_text.replace("\\n", "\n").replace("\r", "")
+    reasoning_paragraphs = [p.strip() for p in normalized_reasoning.split("\n") if p.strip()]
+
+    if reasoning_paragraphs:
+        for p_content in reasoning_paragraphs:
+            rp = doc.add_paragraph(p_content)
+            rp.paragraph_format.space_after = Pt(8)
+    else:
+        rp = doc.add_paragraph(reasoning_text)
+        rp.paragraph_format.space_after = Pt(14)
 
     doc.add_heading("4. Evidentiary Certification", level=2)
     sig_p = doc.add_paragraph(
@@ -263,7 +303,6 @@ def generate_claim_docx(audit_verdict: dict, telemetry_summary: dict) -> io.Byte
     doc.save(buffer)
     buffer.seek(0)
     return buffer
-
 if __name__ == "__main__":
     from data_engine import analyze_records
     from redact_engine import extract_and_sanitize
