@@ -20,11 +20,11 @@ def get_nebius_client(api_key=None, base_url=None):
         target_url = base_url
         target_model = os.getenv("NEBIUS_MODEL", "nvidia/Nemotron-3_5-Lightning")
     elif resolved_key.startswith("nvapi-"):
-        # Local developer key -> route to NVIDIA NIM with NVIDIA model slug
+       
         target_url = "https://integrate.api.nvidia.com/v1"
         target_model = "nvidia/nemotron-3.5-lightning-30b-a3b"
     else:
-        # Evaluator / Judge key -> route to Nebius Token Factory with Nebius model slug
+        
         target_url = os.getenv("NEBIUS_BASE_URL", "https://api.tokenfactory.nebius.com/v1/")
         target_model = os.getenv("NEBIUS_MODEL", "nvidia/Nemotron-3_5-Lightning")
 
