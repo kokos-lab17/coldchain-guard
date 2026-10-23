@@ -19,6 +19,13 @@ def cached_audit_liability(telemetry_summary, sanitized_contract_text, api_key):
 
 st.title("ColdChain Guard")
 st.subheader("Automated audit for temperature-sensitive cargo disputes")
+st.markdown(
+    """
+    > 1. **Zero Math Hallucination:** 100% of sensor statistics and breach intervals are computed deterministically via Python/Pandas.
+    > 2. **Client-Side Privacy:** Sensitive corporate entities and contacts are scrubbed in-memory prior to cloud inference.
+    > 3. **Production Artifacts:** Generates formal, audit-ready Notice of Claim documents (`.docx`).
+    """
+)
 
 with st.sidebar:
     st.markdown("### Settings")
