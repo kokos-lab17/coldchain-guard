@@ -142,7 +142,7 @@ def audit_liability(telemetry_summary, sanitized_contract_text, api_key=None, ba
             parsed_verdict = json.loads(sanitized_candidate, strict=False)
         except Exception:
             pass
-# Step C: Dynamic extraction without hardcoded cargo/container defaults
+
     if not parsed_verdict or not isinstance(parsed_verdict, dict):
         def extract_multiline_field(key, text):
             pattern = rf'"{key}"\s*:\s*"((?:\\.|[^"\\])*)"'
@@ -152,32 +152,32 @@ def audit_liability(telemetry_summary, sanitized_contract_text, api_key=None, ba
                 return raw_val.replace('\\"', '"').replace('\\n', '\n').strip()
             return None
 
-        # Dynamically inspect parsed verdict or raw model text
+        
         carrier_match = re.search(r'"carrier_liable"\s*:\s*(true|false)', raw_content, re.IGNORECASE)
-        # Determine liability dynamically based on empirical duration vs zero-breach
+       
         breach_duration = telemetry_summary.get("breach_duration_hours", 0.0)
         default_liability = True if breach_duration > 0 else False
         is_liable = (carrier_match.group(1).lower() == "true") if carrier_match else default_liability
 
-        # 1. Dynamically extract clause or search contract text for Section/Clause references
+        
         clause = extract_multiline_field("clause_violated", raw_content)
         if not clause or clause.strip() in ["", "null", "None"]:
             contract_section_match = re.search(r'(Section\s+\d+(\.\d+)?|Clause\s+\d+(\.\d+)?)', sanitized_contract_text, re.IGNORECASE)
             clause = contract_section_match.group(0).strip() if contract_section_match else "Breach of Carriage Specifications"
 
-        # 2. Dynamically extract financial exposure or search contract text for monetary caps
+        
         financial = extract_multiline_field("financial_exposure", raw_content)
         if not financial or financial.strip() in ["", "null", "None"]:
             currency_match = re.search(r'(\$\s?[\d,]+(\.\d{2})?|\b[\d,]+\s?(?:USD|EUR|GBP)\b)', sanitized_contract_text)
             financial = currency_match.group(0).strip() if currency_match else "NOT_SPECIFIED"
 
-        # 3. Pull all metrics dynamically from the actual telemetry object
+       
         container_id = str(telemetry_summary.get("container_id", "UNSPECIFIED_CONTAINER"))
         peak_temp = telemetry_summary.get("peak_temperature", telemetry_summary.get("max_temperature", "N/A"))
         fault_logged = telemetry_summary.get("power_fault_verified", False)
         fault_desc = "Hardware fault detected." if fault_logged else "No hardware fault flagged."
 
-        # 4. Dynamic reasoning constructed from actual telemetry variables
+        
         reasoning = extract_multiline_field("legal_reasoning", raw_content)
         if not reasoning or len(reasoning.strip()) < 20:
             if is_liable:
@@ -192,7 +192,7 @@ def audit_liability(telemetry_summary, sanitized_contract_text, api_key=None, ba
                     f"exceeding safe contractual thresholds. Carrier fulfilled safe transit obligations."
                 )
 
-        # 5. Dynamic claim letter constructed purely from the run's variables
+        
         letter = extract_multiline_field("claim_letter_body", raw_content)
         if not letter or len(letter.strip()) < 80:
             if is_liable:
@@ -222,7 +222,7 @@ def audit_liability(telemetry_summary, sanitized_contract_text, api_key=None, ba
             "financial_exposure": financial,
             "claim_letter_body": letter
         }
-        
+
     parsed_verdict["_model_routed"] = target_model
     parsed_verdict["_latency_sec"] = latency
     for k in ["claim_letter_body", "legal_reasoning"]:
