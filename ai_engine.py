@@ -120,7 +120,7 @@ def audit_liability(telemetry_summary, sanitized_contract_text, api_key=None, ba
             "_latency_sec": latency
         }
 
-    # Step A: Clean Markdown fences and isolate outer JSON
+    
     json_candidate = raw_content.strip()
     if "```json" in json_candidate:
         json_candidate = json_candidate.split("```json")[-1].split("```")[0].strip()
@@ -134,7 +134,6 @@ def audit_liability(telemetry_summary, sanitized_contract_text, api_key=None, ba
 
     parsed_verdict = None
 
-    # Step B: Attempt native parse followed by escaped-newline parse
     try:
         parsed_verdict = json.loads(json_candidate, strict=False)
     except Exception:
@@ -144,7 +143,6 @@ def audit_liability(telemetry_summary, sanitized_contract_text, api_key=None, ba
         except Exception:
             pass
 
-    # Step C: DOTALL regex extractor that safely matches across newlines
     if not parsed_verdict or not isinstance(parsed_verdict, dict):
         def extract_multiline_field(key, text):
             pattern = rf'"{key}"\s*:\s*"((?:\\.|[^"\\])*)"'
