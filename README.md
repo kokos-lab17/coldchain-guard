@@ -46,6 +46,7 @@ Every year, over **$35 billion** worth of perishable pharmaceuticals and bioprod
 ![Claim Generation](docs/screenshots/claim_verdict.png)
 *Deterministic verdict with cited breach clauses, financial indemnification demands, and downloadable formatted `.docx` notice.*
 
+
 ---
 
 ## System Architecture
