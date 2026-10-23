@@ -142,7 +142,7 @@ def audit_liability(telemetry_summary, sanitized_contract_text, api_key=None, ba
             parsed_verdict = json.loads(sanitized_candidate, strict=False)
         except Exception:
             pass
-
+# Step C: Dynamic extraction without hardcoded cargo/container defaults
     if not parsed_verdict or not isinstance(parsed_verdict, dict):
         def extract_multiline_field(key, text):
             pattern = rf'"{key}"\s*:\s*"((?:\\.|[^"\\])*)"'
@@ -152,31 +152,68 @@ def audit_liability(telemetry_summary, sanitized_contract_text, api_key=None, ba
                 return raw_val.replace('\\"', '"').replace('\\n', '\n').strip()
             return None
 
+        # Dynamically inspect parsed verdict or raw model text
         carrier_match = re.search(r'"carrier_liable"\s*:\s*(true|false)', raw_content, re.IGNORECASE)
-        is_liable = carrier_match.group(1).lower() == "true" if carrier_match else True
+        # Determine liability dynamically based on empirical duration vs zero-breach
+        breach_duration = telemetry_summary.get("breach_duration_hours", 0.0)
+        default_liability = True if breach_duration > 0 else False
+        is_liable = (carrier_match.group(1).lower() == "true") if carrier_match else default_liability
 
-        clause = extract_multiline_field("clause_violated", raw_content) or "Section 4.2 — Carrier Default & Liquidated Damages"
-        reasoning = extract_multiline_field("legal_reasoning", raw_content) or (
-            f"Sensor telemetry recorded continuous thermal excursion exceeding contractual limits. "
-            f"Conditions under {clause} are satisfied."
-        )
-        financial = extract_multiline_field("financial_exposure", raw_content) or "$450,000 USD"
+        # 1. Dynamically extract clause or search contract text for Section/Clause references
+        clause = extract_multiline_field("clause_violated", raw_content)
+        if not clause or clause.strip() in ["", "null", "None"]:
+            contract_section_match = re.search(r'(Section\s+\d+(\.\d+)?|Clause\s+\d+(\.\d+)?)', sanitized_contract_text, re.IGNORECASE)
+            clause = contract_section_match.group(0).strip() if contract_section_match else "Breach of Carriage Specifications"
+
+        # 2. Dynamically extract financial exposure or search contract text for monetary caps
+        financial = extract_multiline_field("financial_exposure", raw_content)
+        if not financial or financial.strip() in ["", "null", "None"]:
+            currency_match = re.search(r'(\$\s?[\d,]+(\.\d{2})?|\b[\d,]+\s?(?:USD|EUR|GBP)\b)', sanitized_contract_text)
+            financial = currency_match.group(0).strip() if currency_match else "NOT_SPECIFIED"
+
+        # 3. Pull all metrics dynamically from the actual telemetry object
+        container_id = str(telemetry_summary.get("container_id", "UNSPECIFIED_CONTAINER"))
+        peak_temp = telemetry_summary.get("peak_temperature", telemetry_summary.get("max_temperature", "N/A"))
+        fault_logged = telemetry_summary.get("power_fault_verified", False)
+        fault_desc = "Hardware fault detected." if fault_logged else "No hardware fault flagged."
+
+        # 4. Dynamic reasoning constructed from actual telemetry variables
+        reasoning = extract_multiline_field("legal_reasoning", raw_content)
+        if not reasoning or len(reasoning.strip()) < 20:
+            if is_liable:
+                reasoning = (
+                    f"Audited sensor telemetry confirms continuous excursion of {breach_duration} hours "
+                    f"reaching a peak of {peak_temp}°C for Container {container_id}. {fault_desc} "
+                    f"Terms under {clause} are satisfied."
+                )
+            else:
+                reasoning = (
+                    f"Telemetry records for Container {container_id} show no prolonged temperature excursion "
+                    f"exceeding safe contractual thresholds. Carrier fulfilled safe transit obligations."
+                )
+
+        # 5. Dynamic claim letter constructed purely from the run's variables
         letter = extract_multiline_field("claim_letter_body", raw_content)
-
-        if not letter or len(letter) < 80:
-            container = telemetry_summary.get("container_id", "CMAU7392041")
-            peak_temp = telemetry_summary.get("peak_temperature", telemetry_summary.get("max_temperature", 10.08))
-            duration = telemetry_summary.get("breach_duration_hours", 3.75)
-            letter = (
-                f"FORMAL NOTICE OF CARGO DISCREPANCY & CLAIM\n\n"
-                f"To: Carrier Claims & Operational Compliance Department\n"
-                f"Re: Container {container} — Cold Chain Discrepancy\n\n"
-                f"Please accept this formal notification of default under {clause}. "
-                f"Audited telemetry confirms cargo temperatures breached safe levels with a peak of "
-                f"{peak_temp}°C for a continuous duration of {duration} hours.\n\n"
-                f"Pursuant to the carriage terms, demand is hereby made for full indemnification "
-                f"in the amount of {financial}."
-            )
+        if not letter or len(letter.strip()) < 80:
+            if is_liable:
+                letter = (
+                    f"FORMAL NOTICE OF CARGO DISCREPANCY & CLAIM\n\n"
+                    f"To: Carrier Claims & Legal Compliance Department\n"
+                    f"Re: Container {container_id} — Thermal Excursion Incident\n\n"
+                    f"Please accept this formal notification of carrier default under {clause}. "
+                    f"Telemetry records demonstrate cargo temperatures exceeded safe contractual thresholds "
+                    f"(recorded peak: {peak_temp}°C) for a duration of {breach_duration} hours. {fault_desc}\n\n"
+                    f"Pursuant to the carriage agreement, formal demand is hereby made for remedy and compensation "
+                    f"assessed at {financial}."
+                )
+            else:
+                letter = (
+                    f"FORMAL SHIPMENT CLEARANCE NOTICE\n\n"
+                    f"To: Carrier Operations & Shippers Department\n"
+                    f"Re: Container {container_id} — Telemetry Audit Clearance\n\n"
+                    f"Audited sensor records confirm that Container {container_id} was maintained within contractual "
+                    f"thermal specifications throughout transit. No actionable discrepancy or breach was identified."
+                )
 
         parsed_verdict = {
             "carrier_liable": is_liable,
@@ -185,7 +222,7 @@ def audit_liability(telemetry_summary, sanitized_contract_text, api_key=None, ba
             "financial_exposure": financial,
             "claim_letter_body": letter
         }
-
+        
     parsed_verdict["_model_routed"] = target_model
     parsed_verdict["_latency_sec"] = latency
     for k in ["claim_letter_body", "legal_reasoning"]:
