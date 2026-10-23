@@ -26,9 +26,9 @@ Every year, over **$35 billion** worth of perishable pharmaceuticals and bioprod
 
 | Feature | The Problem | How ColdChain Guard Solves It |
 |---|---|---|
-| 🧮 **Deterministic Telemetry Audit** | LLMs frequently hallucinate timestamps, misread decimal degrees, and fail at calculating continuous breach intervals. | **Python & Pandas handle 100% of the math.** Sensor logs are parsed deterministically on-device to compute exact excursion minutes and peak temperatures before the model is ever called. |
-| 🛡️ **Zero-Leakage Privacy Engine** | Uploading full commercial contracts to cloud LLMs exposes sensitive corporate EINs, bank accounts, and contact details. | **On-device regex masking** sanitizes all personal identifiable information (PII) and commercial identifiers in-memory before prompt construction. |
-| 📄 **Automated Legal Artifacts** | Chatbots output informal text snippets that still require manual drafting into formal notices. | **Instant `.docx` legal synthesis.** Compiles verified sensor facts and Nemotron's contractual breach citations into an editable, standard-compliant Notice of Claim. |
+| **Deterministic Telemetry Audit** | LLMs frequently hallucinate timestamps, misread decimal degrees, and fail at calculating continuous breach intervals. | **Python & Pandas handle 100% of the math.** Sensor logs are parsed deterministically on-device to compute exact excursion minutes and peak temperatures before the model is ever called. |
+|**Zero-Leakage Privacy Engine** | Uploading full commercial contracts to cloud LLMs exposes sensitive corporate EINs, bank accounts, and contact details. | **On-device regex masking** sanitizes all personal identifiable information (PII) and commercial identifiers in-memory before prompt construction. |
+|**Automated Legal Artifacts** | Chatbots output informal text snippets that still require manual drafting into formal notices. | **Instant `.docx` legal synthesis.** Compiles verified sensor facts and Nemotron's contractual breach citations into an editable, standard-compliant Notice of Claim. |
 
 ---
 
