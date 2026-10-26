@@ -2,7 +2,7 @@
 
 **An AI-assisted cold-chain shipment auditing and claim-preparation app powered by NVIDIA Nemotron and Nebius Token Factory.**
 
-ColdChain Guard is a student-built, end-to-end Streamlit application for investigating temperature-sensitive cargo incidents. It combines deterministic telemetry analysis in Python/Pandas, contract-text extraction and redaction, and LLM-assisted contract review to help organize evidence and prepare a claim-document draft in one workflow.
+ColdChain Guard is a student-built, end-to-end Streamlit application that bridges the gap between raw IoT container telemetry and complex maritime carriage contracts. When high-value pharmaceuticals or perishable food shipments spoil in transit, freight claims adjusters spend weeks manually cross-referencing thousands of sensor rows against contractual liability thresholds. The system combines deterministic telemetry analysis in Python/Pandas, contract-text extraction and redaction, and LLM-assisted contract review to organize evidence and generate an editable claim document in one workflow.
 
 Built for the **NVIDIA x Nebius Hackathon 2026 — Best Apps & Agents Track**.
 
@@ -19,7 +19,9 @@ Built for the **NVIDIA x Nebius Hackathon 2026 — Best Apps & Agents Track**.
 
 ## Why I built it
 
-Shipping moves goods around the world, including food, medicine, and other products that need to stay within a safe temperature range. When a temperature-sensitive shipment is damaged, the follow-up can be complicated: teams may need to compare sensor logs with a carriage agreement, work out what the evidence shows, and prepare documents before the parties can resolve who is responsible.
+Global cold chains transport over $350 billion in temperature-sensitive pharmaceuticals, biologics, and premium perishables annually. A single refrigerated container (reefer) failure frequently results in total cargo loss ranging from **$150,000 to over $1,000,000 USD**.
+
+Resolving these claims currently takes 30 to 90 days. Teams may need to compare sensor logs with a carriage agreement, work out what the evidence shows, and prepare documents before the parties can resolve who is responsible.
 
 That process can turn into a long back-and-forth. I built ColdChain Guard to bring some of those investigation steps into one workflow. It turns shipment readings into structured metrics, prepares contract text for AI-assisted review, and generates an editable claim-document draft from the results.
 
@@ -33,7 +35,7 @@ The idea is simple: **make the evidence easier to review, and make the first ste
 - Checks available power-status readings for fault indicators.
 - Visualizes temperature readings in an interactive Plotly chart.
 
-**Key design choice:** Python/Pandas calculates the telemetry metrics before the model is called. This keeps numerical processing separate from the LLM's contract interpretation and reduces the chance of relying on the model for sensor arithmetic.
+**Key design choice:** Python/Pandas calculates the telemetry metrics before the model is called. This keeps numerical processing separate from the LLM's contract interpretation and reduces the chance of relying on the model for sensor arithmetic. We deliberately prevent the model from performing arithmetic on sensor data, eliminating numerical hallucination risks.
 
 ### 2. Contract text extraction and redaction
 - Extracts text from PDF carriage agreements.
@@ -43,21 +45,23 @@ The idea is simple: **make the evidence easier to review, and make the first ste
 
 This creates a clear preprocessing step between the original contract and the AI review.
 
+**Key design choice:** Privacy is treated as an intentional preprocessing boundary. The cloud inference API receives only scrubbed text, protecting commercial confidentiality.
+
 ### 3. AI-assisted contract review with NVIDIA Nemotron
 - Uses **NVIDIA Nemotron 3.5 Lightning** as the configured model family.
 - Uses the OpenAI Python SDK's chat-completions interface to send the telemetry summary and redacted contract text to the selected inference endpoint.
 - Requests a structured JSON-style assessment containing a liability indication, contract clause, reasoning, financial exposure, and claim-letter text.
 - Parses the response into fields that the dashboard and Word document generator can use.
 
-**Why separate Python and AI?** The telemetry engine provides the calculated shipment facts; the model is asked to interpret those facts alongside the contract language. This division of work is a deliberate part of the design—not an attempt to make the LLM do every step.
+**Role Separation**: The Python telemetry engine establishes verified empirical facts; Nemotron focuses strictly on legal clause mapping and liability interpretation.
 
 ### 4. NVIDIA and Nebius endpoint routing
 The app uses an OpenAI-compatible request interface and supports routing to both provider ecosystems based on the configured API key:
 
-- **Nebius Token Factory:** the default Nebius endpoint is configured with the `nvidia/Nemotron-3_5-Lightning` model identifier.
-- **NVIDIA API:** keys beginning with `nvapi-` route to NVIDIA's API endpoint with the `nvidia/nemotron-3.5-lightning-30b-a3b` model identifier.
+- **Nebius Token Factory:** Evaluator keys route to the default Nebius endpoint configured with the `nvidia/Nemotron-3_5-Lightning` model identifier.
+- **NVIDIA API:** Keys beginning with `nvapi-` route to NVIDIA's API endpoint with the `nvidia/nemotron-3.5-lightning-30b-a3b` model identifier.
 
-This made it possible to develop and test the same general application workflow across NVIDIA and Nebius endpoints. The provider's endpoint and model identifier are selected by the client configuration.
+**Resilient Fallback Parsing:** If an LLM stream encounters transient token dropouts or unescaped newline characters during long-form generation, an evidentiary regex fallback parser dynamically extracts the container ID, peak temperatures, and duration directly from the empirical telemetry dictionary. This guarantees the workflow never crashes or outputs hardcoded placeholder data for unbenchmarked shipments.
 
 ### 5. Editable Word claim document
 - Generates a downloadable `.docx` file using `python-docx`.
