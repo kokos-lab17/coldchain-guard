@@ -13,6 +13,7 @@ Built for the **NVIDIA x Nebius Hackathon 2026 — Best Apps & Agents Track**.
 ## Try ColdChain Guard
 
 - **Live app:** [Open the Streamlit demo](https://coldchain-guard-69a75eynyy29vt9fyzsoss.streamlit.app/)
+- (Note: Hosted on Streamlit Community Cloud. If the container is sleeping, simply click "Wake app"  it boots in ~30 seconds with pre-configured keys ready to test.)
 - **Video walkthrough:** [Watch the YouTube demo](https://youtu.be/zw4lg_pjb30)
 - **Source code:** [Explore the GitHub repository](https://github.com/kokos-lab17/coldchain-guard)
 
